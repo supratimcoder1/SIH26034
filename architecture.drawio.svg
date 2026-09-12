@@ -1,0 +1,41 @@
+<?xml version="1.0" ?>
+<mxfile host="Electron" modified="2026-09-12T14:17:12.240007+00:00" agent="Antigravity Draw.io MCP Builder" version="30.3.14" type="device">
+  <diagram id="diagram_1" name="MetroGuard AI System Architecture">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="900" math="0" shadow="1">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="client" value="Frontend Client" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;shadow=1;fillColor=#F1F5F9;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontFamily=Helvetica;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="195.0" y="80.0" width="150.0" height="65.0" as="geometry"/>
+        </mxCell>
+        <mxCell id="api" value="Backend API" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;shadow=1;fillColor=#F1F5F9;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontFamily=Helvetica;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="195.0" y="285.0" width="150.0" height="65.0" as="geometry"/>
+        </mxCell>
+        <mxCell id="ocr" value="OCR &amp; AI Service" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;shadow=1;fillColor=#F1F5F9;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontFamily=Helvetica;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="310.0" y="490.0" width="150.0" height="65.0" as="geometry"/>
+        </mxCell>
+        <mxCell id="db" value="Database" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;shadow=1;fillColor=#F1F5F9;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontFamily=Helvetica;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80.0" y="490.0" width="150.0" height="65.0" as="geometry"/>
+        </mxCell>
+        <mxCell id="gemini" value="Gemini AI" style="rounded=1;whiteSpace=wrap;html=1;arcSize=10;shadow=1;fillColor=#F1F5F9;strokeColor=#334155;strokeWidth=1.5;fontColor=#0F172A;fontFamily=Helvetica;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="195.0" y="695.0" width="150.0" height="65.0" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_client_api_1" value="REST API (JWT)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;verticalAlign=bottom;spacingBottom=3;strokeColor=#475569;strokeWidth=1.5;labelBackgroundColor=#FFFFFF;fontColor=#334155;fontSize=11;fontFamily=Helvetica;" edge="1" parent="1" source="client" target="api">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_client_ocr_2" value="Direct Chat (RAG)" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;verticalAlign=bottom;spacingBottom=3;strokeColor=#475569;strokeWidth=1.5;labelBackgroundColor=#FFFFFF;fontColor=#334155;fontSize=11;fontFamily=Helvetica;" edge="1" parent="1" source="client" target="ocr">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_api_ocr_3" value="Proxy Image Uploads" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;verticalAlign=bottom;spacingBottom=3;strokeColor=#475569;strokeWidth=1.5;labelBackgroundColor=#FFFFFF;fontColor=#334155;fontSize=11;fontFamily=Helvetica;" edge="1" parent="1" source="api" target="ocr">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_api_db_4" value="Read/Write Entities" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;verticalAlign=bottom;spacingBottom=3;strokeColor=#475569;strokeWidth=1.5;labelBackgroundColor=#FFFFFF;fontColor=#334155;fontSize=11;fontFamily=Helvetica;" edge="1" parent="1" source="api" target="db">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="e_ocr_gemini_5" value="Invoke OCR &amp; Embeddings" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=classic;verticalAlign=bottom;spacingBottom=3;strokeColor=#475569;strokeWidth=1.5;labelBackgroundColor=#FFFFFF;fontColor=#334155;fontSize=11;fontFamily=Helvetica;" edge="1" parent="1" source="ocr" target="gemini">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

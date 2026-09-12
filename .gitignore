@@ -1,0 +1,85 @@
+# =========================================================================
+# SIH26034 Unified Monorepo .gitignore
+# =========================================================================
+
+# Environment files with sensitive credentials
+*.env
+*.env.local
+*.env.*.local
+
+# -------------------------------------------------------------------------
+# Node / Frontend (frontend/)
+# -------------------------------------------------------------------------
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/*.local
+frontend/coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# -------------------------------------------------------------------------
+# Java / Spring Boot / Maven (backend/)
+# -------------------------------------------------------------------------
+backend/target/
+backend/*.jar
+backend/*.war
+backend/*.nar
+backend/*.ear
+backend/*.zip
+backend/*.tar.gz
+backend/*.rar
+backend/uploads/
+
+# -------------------------------------------------------------------------
+# Python / OCR Service (ocr-service/)
+# -------------------------------------------------------------------------
+ocr-service/__pycache__/
+ocr-service/*.py[cod]
+ocr-service/*$py.class
+ocr-service/.venv/
+ocr-service/venv/
+ocr-service/env/
+ocr-service/.pytest_cache/
+
+# -------------------------------------------------------------------------
+# Operating System & IDEs
+# -------------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.sublime-workspace
+*.sublime-project
+*.code-workspace
+
+# -------------------------------------------------------------------------
+# Certificates, Keys & Local Machine Overrides
+# -------------------------------------------------------------------------
+*.der
+*.p12
+*.cer
+*.crt
+*.pem
+
+# -------------------------------------------------------------------------
+# Build Caches & Debug Artifacts
+# -------------------------------------------------------------------------
+*.timestamp-*.mjs
+*debug*.jpg
+*debug*.png
+
+# -------------------------------------------------------------------------
+# Agent-only files
+# -------------------------------------------------------------------------
+AGENTS.md
+
+
