@@ -42,7 +42,7 @@ We built a tri-service software architecture that leverages state-of-the-art vis
 ## 🏗️ Architecture & Tech Stack
 
 <div align="center">
-  <img src="./architecture.drawio.svg" alt="System Architecture Diagram" width="800" />
+  <img src="./architecture.drawio.png" alt="System Architecture Diagram" width="800" />
 </div>
 <br />
 
