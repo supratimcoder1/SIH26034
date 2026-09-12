@@ -41,10 +41,20 @@ We built a tri-service software architecture that leverages state-of-the-art vis
 
 ## 🏗️ Architecture & Tech Stack
 
-<div align="center">
-  <img src="./architecture.drawio.png" alt="System Architecture Diagram" width="800" />
-</div>
-<br />
+```mermaid
+graph TD
+    client["💻 Frontend Client<br/>(React 18 SPA)"]
+    api["⚙️ Backend API<br/>(Spring Boot 4.1.1)"]
+    ocr["🧠 OCR & AI Service<br/>(FastAPI + Python)"]
+    db["🗄️ Database<br/>(Neon Cloud Postgres)"]
+    gemini["✨ Gemini AI<br/>(Google GenAI)"]
+
+    client -->|REST API - JWT| api
+    client -->|Direct Chat - RAG| ocr
+    api -->|Proxy Image Uploads| ocr
+    api -->|Read / Write Entities| db
+    ocr -->|Invoke OCR & Embeddings| gemini
+```
 
 This repository is structured as a unified monorepo containing three microservices:
 
