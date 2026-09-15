@@ -1,0 +1,14 @@
+{
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Spring Boot-LmpcComplianceApplication<lmpc-compliance>",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "mainClass": "com.sih.lmpc_compliance.LmpcComplianceApplication",
+      "projectName": "lmpc-compliance",
+      "args": "",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}
