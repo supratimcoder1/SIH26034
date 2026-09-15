@@ -8,6 +8,8 @@ import com.sih.lmpc_compliance.entity.Violation;
 import com.sih.lmpc_compliance.repository.ScanRepository;
 import com.sih.lmpc_compliance.repository.UserRepository;
 import com.sih.lmpc_compliance.repository.ViolationRepository;
+import com.sih.lmpc_compliance.repository.ProductRepository;
+import com.sih.lmpc_compliance.entity.Product;
 import com.sih.lmpc_compliance.service.ComplianceService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,17 +26,20 @@ public class ScanController {
     private final ScanRepository scanRepository;
     private final ViolationRepository violationRepository;
     private final UserRepository userRepository;
+    private final ProductRepository productRepository;
 
     public ScanController(
             ComplianceService complianceService,
             ScanRepository scanRepository,
             ViolationRepository violationRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            ProductRepository productRepository
     ) {
         this.complianceService = complianceService;
         this.scanRepository = scanRepository;
         this.violationRepository = violationRepository;
         this.userRepository = userRepository;
+        this.productRepository = productRepository;
     }
 
     @PostMapping("/analyze")
@@ -48,10 +53,27 @@ public class ScanController {
         if (user == null) return ResponseEntity.status(401).build();
 
         if (user.getRole() == User.UserRole.viewer) {
-            return ResponseEntity.ok(scanRepository.findByUploadedById(userId));
+            return ResponseEntity.ok(scanRepository.findByUploadedByIdOrderByScannedAtDesc(userId));
         } else {
-            return ResponseEntity.ok(scanRepository.findAll());
+            return ResponseEntity.ok(scanRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "scannedAt")));
         }
+    }
+    
+    @PutMapping("/{id}/product")
+    public ResponseEntity<?> updateScanProduct(@PathVariable UUID id, @RequestBody java.util.Map<String, String> payload) {
+        Scan scan = scanRepository.findById(id).orElse(null);
+        if (scan == null) return ResponseEntity.notFound().build();
+        
+        Product newProd = Product.builder()
+                .name(payload.getOrDefault("name", "Unknown Product"))
+                .manufacturer(payload.getOrDefault("manufacturer", "Unknown Manufacturer"))
+                .imported(false)
+                .soldViaEcommerce(false)
+                .build();
+        productRepository.save(newProd);
+        scan.setProduct(newProd);
+        scanRepository.save(scan);
+        return ResponseEntity.ok(scan);
     }
     
     @GetMapping("/{id}")
@@ -92,6 +114,9 @@ public class ScanController {
         if (scan == null) return ResponseEntity.notFound().build();
         
         scan.setReviewStatus(status);
+        if (scan.getRawJson() != null) {
+            scan.getRawJson().put("overall_status", status);
+        }
         scanRepository.save(scan);
         return ResponseEntity.ok(scan);
     }

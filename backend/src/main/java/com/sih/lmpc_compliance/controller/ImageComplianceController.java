@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -43,38 +44,45 @@ public class ImageComplianceController {
         this.productRepository = productRepository;
     }
 
-    @PostMapping("/analyze-image")
-    public ResponseEntity<?> analyzeImage(
-            @RequestParam("file") MultipartFile file,
+    @PostMapping("/analyze-images")
+    public ResponseEntity<?> analyzeImages(
+            @RequestParam("files") List<MultipartFile> files,
             @AuthenticationPrincipal UUID userId) {
         try {
-            if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
+            if (files == null || files.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "No files provided"));
             }
             if (userId == null) {
                 return ResponseEntity.status(401).body(Map.of("error", "Unauthorized"));
             }
 
-            // 1. Call Python OCR Backend (In-Memory Processing)
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("file", new ByteArrayResource(file.getBytes()) {
-                @Override
-                public String getFilename() {
-                    return file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload.png";
+            StringBuilder combinedText = new StringBuilder();
+
+            for (MultipartFile file : files) {
+                if (file.isEmpty()) continue;
+                
+                // 1. Call Python OCR Backend (In-Memory Processing)
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+                MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+                body.add("file", new ByteArrayResource(file.getBytes()) {
+                    @Override
+                    public String getFilename() {
+                        return file.getOriginalFilename() != null ? file.getOriginalFilename() : "upload.png";
+                    }
+                });
+                HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+                ResponseEntity<String> response = restTemplate.postForEntity(ocrServiceUrl + "/extract-text", requestEntity, String.class);
+                
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    JsonNode jsonResponse = objectMapper.readTree(response.getBody());
+                    combinedText.append(jsonResponse.path("extracted_text").asText()).append("\n\n");
                 }
-            });
-            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-            ResponseEntity<String> response = restTemplate.postForEntity(ocrServiceUrl + "/extract-text", requestEntity, String.class);
-            
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                return ResponseEntity.internalServerError().body(Map.of("error", "OCR Service failed"));
             }
 
-            // 2. Parse OCR Response
-            JsonNode jsonResponse = objectMapper.readTree(response.getBody());
-            String extractedText = jsonResponse.path("extracted_text").asText();
+            if (combinedText.length() == 0) {
+                return ResponseEntity.internalServerError().body(Map.of("error", "OCR Service failed for all images"));
+            }
 
             // 3. Ensure a dummy product exists for logging scans
             Product prod = productRepository.findFirstByOrderByIdAsc().orElse(null);
@@ -89,7 +97,7 @@ public class ImageComplianceController {
             // 4. Pass to Java Compliance Engine
             TextAnalysisRequest textRequest = new TextAnalysisRequest();
             textRequest.setProductId(prod.getId());
-            textRequest.setExtractedText(extractedText);
+            textRequest.setExtractedText(combinedText.toString());
 
             ComplianceResponse complianceResponse = complianceService.analyzeText(textRequest, userId);
 

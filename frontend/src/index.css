@@ -20,9 +20,16 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
-  color: #1e293b;
-  background: #f8fafc;
   font-size: 14px;
+  --chart-grid: #f1f5f9;
+  --chart-axis: #64748b;
+  --chart-tooltip-bg: #1e293b;
+  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+}
+.dark {
+  --chart-grid: #1e293b;
+  --chart-axis: #94a3b8;
+  --chart-tooltip-bg: #0f172a;
 }
 * {
   box-sizing: border-box;
@@ -441,21 +448,15 @@ th {
   color: #6d7c8b;
   text-align: left;
   letter-spacing: 0.4px;
-  background: #f8fafc;
   padding: 12px 14px;
-  border-bottom: 1px solid #e0e7ee;
 }
 td {
   padding: 12px 14px;
-  border-bottom: 1px solid #e6ebf0;
   font-size: 12px;
   vertical-align: middle;
 }
 tbody tr {
   cursor: pointer;
-}
-tbody tr:hover {
-  background: #f7fbff;
 }
 td b,
 td small {

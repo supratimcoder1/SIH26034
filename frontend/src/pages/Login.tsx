@@ -43,7 +43,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-[45%_55%] bg-slate-50 font-sans">
+    <div className="min-h-screen grid grid-cols-1 md:grid-cols-[45%_55%] bg-slate-50 dark:bg-slate-900/50 font-sans">
       
       {/* LEFT PANEL */}
       <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-12 flex flex-col justify-between hidden md:flex relative overflow-hidden">
@@ -99,7 +99,7 @@ export default function Login() {
           </motion.div>
         </div>
 
-        <div className="text-xs text-slate-500 mt-12 relative z-10">
+        <div className="text-xs text-slate-500 dark:text-slate-400 mt-12 relative z-10">
           <p>Ministry of Consumer Affairs, Food & Public Distribution · Government of India</p>
           <p className="mt-1">SIH Project 26034 · Internal Enforcement Tool</p>
         </div>
@@ -110,9 +110,9 @@ export default function Login() {
         <div className="w-full max-w-md">
           
           {/* Tabs */}
-          <div className="flex gap-8 border-b border-slate-200 mb-8">
+          <div className="flex gap-8 border-b border-slate-200 dark:border-slate-700 mb-8">
             <button 
-              className={`pb-4 text-sm font-semibold transition-colors relative ${tab === 'signin' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`pb-4 text-sm font-semibold transition-colors relative ${tab === 'signin' ? 'text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400'}`}
               onClick={() => setTab('signin')}
             >
               Sign In
@@ -121,7 +121,7 @@ export default function Login() {
               )}
             </button>
             <button 
-              className={`pb-4 text-sm font-semibold transition-colors relative ${tab === 'signup' ? 'text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`pb-4 text-sm font-semibold transition-colors relative ${tab === 'signup' ? 'text-slate-900 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:text-slate-400'}`}
               onClick={() => setTab('signup')}
             >
               Sign Up
@@ -132,10 +132,10 @@ export default function Login() {
           </div>
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 mb-2">
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
               {tab === 'signin' ? 'Sign in to your account' : 'Create new account'}
             </h2>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {tab === 'signin' ? 'Authorised enforcement officers only' : 'Register for access to the portal'}
             </p>
           </div>
@@ -158,38 +158,38 @@ export default function Login() {
 
               {tab === 'signup' && (
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">Full Name</label>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Full Name</label>
                   <input 
                     type="text" 
                     value={name} 
                     onChange={e => setName(e.target.value)} 
                     required 
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm"
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm"
                     placeholder="John Doe"
                   />
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Official Email Address</label>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Official Email Address</label>
                 <input 
                   type="email" 
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
                   required 
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm"
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm"
                   placeholder="officer@metroguard.gov.in"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Password</label>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Password</label>
                 <input 
                   type="password" 
                   value={password} 
                   onChange={e => setPassword(e.target.value)} 
                   required 
-                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm"
+                  className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all text-sm"
                   placeholder="Enter your password"
                 />
               </div>
@@ -197,7 +197,7 @@ export default function Login() {
               <button 
                 type="submit" 
                 disabled={loading}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-3 rounded-lg transition-colors flex justify-center items-center gap-2 shadow-lg shadow-slate-900/20 disabled:opacity-70"
+                className="w-full bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white font-medium py-3 rounded-lg transition-colors flex justify-center items-center gap-2 shadow-lg shadow-slate-900/20 disabled:opacity-70"
               >
                 {loading ? 'Processing...' : (tab === 'signin' ? 'Sign In' : 'Sign Up')}
               </button>
@@ -210,59 +210,59 @@ export default function Login() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
-              className="mt-10 border border-slate-200 rounded-xl overflow-hidden bg-white shadow-sm"
+              className="mt-10 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors shadow-sm"
             >
-              <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
-                <span className="text-xs font-bold text-slate-500 tracking-wider">DEMO CREDENTIALS — HACKATHON ACCESS</span>
+              <div className="bg-slate-50 dark:bg-slate-900/50 px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 tracking-wider">DEMO CREDENTIALS — HACKATHON ACCESS</span>
               </div>
               
               <div className="divide-y divide-slate-100">
                 {/* Officer */}
-                <div className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                <div className="p-4 flex items-center justify-between hover:bg-slate-50 dark:bg-slate-900/50 transition-colors group">
                   <div className="flex items-center gap-4">
                     <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded w-16 text-center">Officer</span>
                     <div>
-                      <p className="text-sm font-medium text-slate-700">officer@metroguard.gov.in</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">officer@metroguard.gov.in</p>
                       <p className="text-xs text-slate-400 mt-0.5 font-mono">Officer@2026</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => fillDemo('officer')}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-slate-400 text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
                   >
                     <Copy size={14} /> Use
                   </button>
                 </div>
 
                 {/* Admin */}
-                <div className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                <div className="p-4 flex items-center justify-between hover:bg-slate-50 dark:bg-slate-900/50 transition-colors group">
                   <div className="flex items-center gap-4">
                     <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-1 rounded w-16 text-center">Admin</span>
                     <div>
-                      <p className="text-sm font-medium text-slate-700">admin@metroguard.gov.in</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">admin@metroguard.gov.in</p>
                       <p className="text-xs text-slate-400 mt-0.5 font-mono">Admin@2026</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => fillDemo('admin')}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-slate-400 text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
                   >
                     <Copy size={14} /> Use
                   </button>
                 </div>
 
                 {/* Normal User */}
-                <div className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                <div className="p-4 flex items-center justify-between hover:bg-slate-50 dark:bg-slate-900/50 transition-colors group">
                   <div className="flex items-center gap-4">
                     <span className="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-1 rounded w-16 text-center">User</span>
                     <div>
-                      <p className="text-sm font-medium text-slate-700">user@metroguard.gov.in</p>
+                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">user@metroguard.gov.in</p>
                       <p className="text-xs text-slate-400 mt-0.5 font-mono">User@2026</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => fillDemo('user')}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
+                    className="bg-slate-100 hover:bg-slate-200 text-slate-600 dark:text-slate-400 text-xs font-semibold px-3 py-1.5 rounded transition-colors flex items-center gap-1.5 opacity-0 group-hover:opacity-100"
                   >
                     <Copy size={14} /> Use
                   </button>

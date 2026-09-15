@@ -1,5 +1,5 @@
 import { Scan, ScanFilters, User } from '../types';
-import { saveFile } from '../fileStore';
+import { saveFiles } from '../fileStore';
 
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
@@ -37,8 +37,8 @@ async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<R
 export async function pingDatabase() {
   try {
     // /api/health now executes a SELECT 1 query to wake the DB
-    await fetch(`${API_BASE}/health`); 
-  } catch (e) {
+    await fetch(`${API_BASE}/health`);
+  } catch {
     // Ignore errors for background ping
   }
 }
@@ -88,19 +88,20 @@ export async function deleteUser(id: string): Promise<void> {
 }
 
 // --- SCANS ---
-export async function analyzeImage(
-  file: File,
+export async function analyzeImages(
+  files: File[],
   packWidthCm?: number,
   packHeightCm?: number,
   isMolded?: boolean
 ): Promise<Scan> {
   const formData = new FormData();
-  formData.append("file", file);
+  files.forEach(file => formData.append("files", file));
+
   if (packWidthCm) formData.append("manual_pack_width_cm", String(packWidthCm));
   if (packHeightCm) formData.append("manual_pack_height_cm", String(packHeightCm));
   if (isMolded !== undefined) formData.append("is_molded", String(isMolded));
 
-  const res = await apiFetch(`${API_BASE}/compliance/analyze-image`, {
+  const res = await apiFetch(`${API_BASE}/compliance/analyze-images`, {
     method: "POST",
     headers: getAuthHeaders(true),
     body: formData
@@ -110,8 +111,8 @@ export async function analyzeImage(
     throw new Error(err.detail || `Analysis failed: ${res.status}`);
   }
   const raw = await res.json();
-  const scan = normalizeApiScan(raw, file.name, file);
-  await saveFile(scan.id, file);
+  const scan = normalizeApiScan(raw, files[0].name, files[0]);
+  await saveFiles(scan.id, files);
   return scan;
 }
 
@@ -135,7 +136,7 @@ export async function analyzeBatch(
     items[i].status = 'processing';
     onProgress(i, items[i]);
     try {
-      const scan = await analyzeImage(files[i], packWidthCm, packHeightCm, isMolded);
+      const scan = await analyzeImages([files[i]], packWidthCm, packHeightCm, isMolded);
       items[i].status = 'done';
       items[i].scan = scan;
     } catch (e) {
@@ -181,7 +182,7 @@ export async function generateReport(
     const err = await res.json().catch(() => ({ detail: "Report generation failed" }));
     const message = typeof err.detail === 'string' ? err.detail
       : Array.isArray(err.detail) ? err.detail.map((e: any) => e.msg || JSON.stringify(e)).join('; ')
-      : `Report generation failed: ${res.status}`;
+        : `Report generation failed: ${res.status}`;
     throw new Error(message);
   }
   return res.blob();
@@ -201,8 +202,9 @@ export function downloadBlob(blob: Blob, filename: string) {
 export async function listScans(filters: ScanFilters = {}): Promise<Scan[]> {
   const res = await apiFetch(`${API_BASE}/scans`, { headers: getAuthHeaders(false) });
   if (!res.ok) throw new Error('Failed to load scans');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allScans: any[] = await res.json();
-  
+
   // Fetch violations for all scans in parallel
   const scansWithViolations = await Promise.all(allScans.map(async (raw) => {
     try {
@@ -212,18 +214,18 @@ export async function listScans(filters: ScanFilters = {}): Promise<Scan[]> {
       } else {
         raw.violations = [];
       }
-    } catch (e) {
+    } catch {
       raw.violations = [];
     }
     return raw;
   }));
 
-  let list: Scan[] = scansWithViolations.map(raw => normalizeApiScan(raw, "Product"));
-  
+  const list: Scan[] = scansWithViolations.map(raw => normalizeApiScan(raw, "Product"));
+
   const query = filters.search?.toLowerCase().trim() ?? '';
-  return list.filter(scan => 
-    (!query || `${scan.id} ${scan.product_name} ${scan.manufacturer}`.toLowerCase().includes(query)) && 
-    (!filters.status || filters.status === 'all' || scan.overall_status === filters.status) && 
+  return list.filter(scan =>
+    (!query || `${scan.id} ${scan.product_name} ${scan.manufacturer}`.toLowerCase().includes(query)) &&
+    (!filters.status || filters.status === 'all' || scan.overall_status === filters.status) &&
     (!filters.type || filters.type === 'all' || scan.scan_type === filters.type)
   );
 }
@@ -235,20 +237,29 @@ export async function getScanById(id: string): Promise<Scan | null> {
     throw new Error('Failed to fetch scan');
   }
   const raw = await res.json();
-  
+
   // Fetch violations
   try {
     const vRes = await apiFetch(`${API_BASE}/scans/${id}/violations`, { headers: getAuthHeaders(false) });
     if (vRes.ok) {
       raw.violations = await vRes.json();
     }
-  } catch (e) {}
+  } catch { }
 
   return normalizeApiScan(raw, "Product");
 }
 
-export async function resolveReview(scanId: string, fieldId: string, compliant: boolean) {
-  const status = compliant ? 'approved' : 'rejected';
+export async function updateScanProduct(scanId: string, name: string, manufacturer: string) {
+  const res = await apiFetch(`${API_BASE}/scans/${scanId}/product`, {
+    method: 'PUT',
+    headers: getAuthHeaders(false),
+    body: JSON.stringify({ name, manufacturer })
+  });
+  if (!res.ok) throw new Error(await res.text() || 'Failed to update product details');
+  return normalizeApiScan(await res.json(), "Product");
+}
+
+export async function resolveReview(scanId: string, status: string) {
   const res = await apiFetch(`${API_BASE}/scans/${scanId}/review?status=${status}`, {
     method: 'PUT',
     headers: getAuthHeaders(false)
@@ -257,19 +268,17 @@ export async function resolveReview(scanId: string, fieldId: string, compliant: 
   return normalizeApiScan(await res.json(), "Product");
 }
 
-export async function getReviewItems(): Promise<{scan: Scan, field: string}[]> {
+export async function getReviewItems(): Promise<Scan[]> {
   const scans = await listScans({ status: 'review_required' });
-  return scans
-    .flatMap(scan => scan.not_detected_fields.map(field => ({ scan, field })))
-    .sort((a, b) => new Date(b.scan.scan_date).getTime() - new Date(a.scan.scan_date).getTime());
+  return scans.sort((a, b) => new Date(b.scan_date).getTime() - new Date(a.scan_date).getTime());
 }
 
 // Normalize raw json from backend into Frontend Scan object
 function normalizeApiScan(raw: any, sourceLabel: string, sourceFile?: File): Scan {
-    const fields: Scan['fields'] = {};
-    const rawFields = raw.rawJson?.fields || raw.fields || {};
-    for (const [key, field] of Object.entries<any>(rawFields)) {
-      let value = field.value;
+  const fields: Scan['fields'] = {};
+  const rawFields = raw.rawJson?.fields || raw.fields || {};
+  for (const [key, field] of Object.entries<any>(rawFields)) {
+    let value = field.value;
     if (value && typeof value === 'object' && !Array.isArray(value) && 'amount' in value) {
       value = { ...value, amount: Number(value.amount) };
     }
@@ -286,52 +295,55 @@ function normalizeApiScan(raw: any, sourceLabel: string, sourceFile?: File): Sca
   // Handle Java backend ComplianceResponse format
   if (raw.foundDeclarations && Array.isArray(raw.foundDeclarations)) {
     raw.foundDeclarations.forEach((decl: string) => {
-        const key = decl.toLowerCase().replace(/\W+/g, '_');
-        if (!fields[key]) {
-            fields[key] = { status: 'compliant', rule_ref: 'Legal Metrology Rules, 2011', value: 'Detected on label', confidence: 1 };
-        }
+      const key = decl.toLowerCase().replace(/\W+/g, '_');
+      if (!fields[key]) {
+        fields[key] = { status: 'compliant', rule_ref: 'Legal Metrology Rules, 2011', value: 'Detected on label', confidence: 1 };
+      }
     });
   }
   if (raw.missingDeclarations && Array.isArray(raw.missingDeclarations)) {
     raw.missingDeclarations.forEach((decl: string) => {
-        const key = decl.toLowerCase().replace(/\W+/g, '_');
-        if (!fields[key]) {
-            fields[key] = { status: 'not_detected', rule_ref: 'Legal Metrology Rules, 2011', value: null, reason: decl + ' missing', confidence: 0 };
-        }
+      const key = decl.toLowerCase().replace(/\W+/g, '_');
+      if (!fields[key]) {
+        fields[key] = { status: 'not_detected', rule_ref: 'Legal Metrology Rules, 2011', value: null, reason: decl + ' missing', confidence: 0 };
+      }
     });
   }
 
-    // If backend returned a DB Scan entity, we might need to map DB fields:
-    let status = raw.status || raw.overall_status || 'pending';
-    
-    if (raw.rawJson && raw.rawJson.overall_status) {
-      status = raw.rawJson.overall_status;
-    } else if (status === 'completed') {
-      if (raw.violations && raw.violations.length > 0) {
-        status = 'non_compliant';
-      } else {
-        status = 'compliant';
-      }
-    }
+  let status = raw.status || raw.overall_status || 'pending';
 
-    if (raw.reviewStatus === 'approved') {
-      status = 'compliant';
-    } else if (raw.reviewStatus === 'rejected') {
+  if (raw.rawJson && raw.rawJson.overall_status) {
+    status = raw.rawJson.overall_status;
+  } else if (status === 'completed') {
+    if (raw.violations && raw.violations.length > 0) {
       status = 'non_compliant';
+    } else {
+      status = 'compliant';
     }
+  }
+  status = status.toLowerCase();
 
-  // Also map the violations property
+  if (raw.reviewStatus === 'compliant' || raw.reviewStatus === 'approved') {
+    status = 'compliant';
+  } else if (raw.reviewStatus === 'non_compliant' || raw.reviewStatus === 'rejected') {
+    status = 'non_compliant';
+  } else if (raw.reviewStatus === 'review_required') {
+    status = 'review_required';
+  } else if (raw.reviewStatus === 'quality_issue') {
+    status = 'insufficient_image_quality';
+  }
+
   const violations = raw.violations ? raw.violations.map((v: any) => ({
     rule_ref: v.ruleRef || v.rule_ref || 'Unknown Rule',
     severity: (v.severity || 'minor').toLowerCase(),
     description: v.description || ''
   })) : [];
-  
+
   return {
     id: raw.id || raw.scanId || `local-${Date.now()}`,
     scan_date: raw.scannedAt || raw.scanned_at || new Date().toISOString(),
     product_name: raw.product?.name || sourceLabel,
-    manufacturer: 'Unknown Manufacturer',
+    manufacturer: raw.product?.manufacturer || 'Unknown Manufacturer',
     overall_status: status as any,
     compliance_score: raw.rawJson?.compliance_score ?? raw.compliance_score ?? raw.score ?? 0,
     scan_type: raw.is_ecommerce ? 'ecommerce' : 'physical',

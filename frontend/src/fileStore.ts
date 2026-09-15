@@ -13,22 +13,26 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-export async function saveFile(scanId: string, file: File): Promise<void> {
+export async function saveFiles(scanId: string, files: File[]): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
-    tx.objectStore(STORE_NAME).put(file, scanId);
+    tx.objectStore(STORE_NAME).put(files, scanId);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
-export async function getFile(scanId: string): Promise<File | null> {
+export async function getFiles(scanId: string): Promise<File[]> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
     const req = tx.objectStore(STORE_NAME).get(scanId);
-    req.onsuccess = () => resolve(req.result || null);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = () => {
+      if (!req.result) resolve([]);
+      else if (Array.isArray(req.result)) resolve(req.result);
+      else resolve([req.result]); // Legacy fallback
+    };
+    req.onerror = () => reject(tx.error);
   });
 }

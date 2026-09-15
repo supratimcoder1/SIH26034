@@ -81,9 +81,9 @@ public class ComplianceService {
                 ? 0
                 : (found.size() * 100) / totalChecks;
 
-        String status = missing.isEmpty()
+        String status = score == 100
                 ? "COMPLIANT"
-                : "NON_COMPLIANT";
+                : "REVIEW_REQUIRED";
 
         java.util.Map<String, Object> rawJson = new java.util.HashMap<>();
         rawJson.put("compliance_score", score);
@@ -284,9 +284,9 @@ public class ComplianceService {
                 ? 0
                 : (found.size() * 100) / totalChecks;
 
-        String status = missing.isEmpty()
+        String status = score == 100
                 ? "COMPLIANT"
-                : "NON_COMPLIANT";
+                : "REVIEW_REQUIRED";
 
         java.util.Map<String, Object> rawJson = new java.util.HashMap<>();
         rawJson.put("compliance_score", score);

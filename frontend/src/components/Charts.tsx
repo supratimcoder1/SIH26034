@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Cell, LineChart, Legend, Line } from 'recharts';
 import { Scan } from '../types';
 
-const CHART = { critical: '#dd4e4e', major: '#d99b17', minor: '#2b78bb', compliant: '#1e8b63', nonCompliant: '#dd4e4e', grid: '#edf1f5', axis: '#73818f', tooltipBg: '#172333' };
+const CHART = { critical: '#dd4e4e', major: '#d99b17', minor: '#2b78bb', compliant: '#1e8b63', nonCompliant: '#dd4e4e', grid: 'var(--chart-grid)', axis: 'var(--chart-axis)', tooltipBg: 'var(--chart-tooltip-bg)' };
 
 export function SeverityChart({ scans }: { scans: Scan[] }) {
   const data = useMemo(() => {

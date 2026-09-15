@@ -54,8 +54,8 @@ export default function Dashboard() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-1">Enforcement Dashboard</h1>
-          <p className="text-slate-500 font-medium text-sm">South Delhi District • Legal Metrology Division</p>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">Enforcement Dashboard</h1>
+          <p className="text-slate-500 dark:text-slate-400 font-medium text-sm">South Delhi District • Legal Metrology Division</p>
         </div>
         <button 
           onClick={() => navigate('/scans/new')}
@@ -66,16 +66,17 @@ export default function Dashboard() {
       </div>
 
       {/* Date Filter & Overview */}
-      <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-2 rounded-2xl shadow-sm border border-slate-100 mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-white dark:bg-slate-900 p-2 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 mb-6 transition-colors">
         <div className="flex gap-1">
           {['7d', '30d', 'custom'].map(p => (
             <button 
               key={p}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               onClick={() => setPeriod(p as any)}
               className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
                 period === p 
-                  ? 'bg-slate-900 text-white shadow-md' 
-                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'
+                  ? 'bg-slate-900 dark:bg-slate-700 text-white shadow-md' 
+                  : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-300'
               }`}
             >
               {p === '7d' ? 'Last 7 Days' : p === '30d' ? 'Last 30 Days' : 'Custom Range'}
@@ -114,27 +115,27 @@ export default function Dashboard() {
         <StatCard 
           label="Quality Issues" value={qualityIssues} icon={AlertTriangle} 
           hint="Recapture recommended" 
-          gradient="from-white to-white" iconBg="bg-slate-100 text-slate-500" textClass="text-slate-500" valueClass="text-slate-900" 
-          border="border border-slate-200"
+          gradient="from-white to-white dark:from-slate-800 dark:to-slate-900" iconBg="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400" textClass="text-slate-500 dark:text-slate-400" valueClass="text-slate-900 dark:text-white" 
+          border="border border-slate-200 dark:border-slate-700"
         />
       </motion.div>
 
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <motion.div variants={itemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
           <div className="mb-6">
-            <h3 className="text-lg font-bold text-slate-900">Violations by Severity</h3>
-            <p className="text-sm text-slate-500">Distribution across all non-compliant scans</p>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Violations by Severity</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Distribution across all non-compliant scans</p>
           </div>
           <div className="h-[265px]">
             <SeverityChart scans={filteredScans} />
           </div>
         </motion.div>
         
-        <motion.div variants={itemVariants} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+        <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 transition-colors">
           <div className="mb-6">
-            <h3 className="text-lg font-bold text-slate-900">Compliance Trend</h3>
-            <p className="text-sm text-slate-500">Outcome distribution over selected period</p>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Compliance Trend</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Outcome distribution over selected period</p>
           </div>
           <div className="h-[265px]">
             <ComplianceChart scans={filteredScans} />
@@ -143,11 +144,11 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Scans Table */}
-      <motion.div variants={itemVariants} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+      <motion.div variants={itemVariants} className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Recent Scans</h3>
-            <p className="text-sm text-slate-500">{Math.min(10, filteredScans.length)} most recent submissions</p>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">Recent Scans</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{Math.min(10, filteredScans.length)} most recent submissions</p>
           </div>
           <button 
             onClick={() => navigate('/scans')}

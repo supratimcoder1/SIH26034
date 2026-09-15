@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FileDown, FileText, AlertTriangle, Activity, Gauge, SlidersHorizontal, ChevronDown, CheckCircle2, ShieldAlert, Sparkles, Scale, Search, Clock } from 'lucide-react';
-import { getScanById, generateReport, downloadBlob, fetchScanImageBlob } from '../api';
+import { FileDown, FileText, AlertTriangle, Gauge, SlidersHorizontal, ChevronDown, CheckCircle2, ShieldAlert, Scale, Search, Clock } from 'lucide-react';
+import { getScanById, fetchScanImageBlob, updateScanProduct, resolveReview } from '../api';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import html2pdf from 'html2pdf.js';
-import { getFile } from '../fileStore';
+import { getFiles } from '../fileStore';
 import { Scan, OverallStatus, Severity } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,7 +18,7 @@ const badgeColors: Record<OverallStatus, string> = {
   compliant: 'bg-emerald-100 text-emerald-700 border-emerald-200',
   non_compliant: 'bg-rose-100 text-rose-700 border-rose-200',
   review_required: 'bg-amber-100 text-amber-700 border-amber-200',
-  insufficient_image_quality: 'bg-slate-100 text-slate-700 border-slate-200',
+  insufficient_image_quality: 'bg-slate-100 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700',
   pending: 'bg-blue-100 text-blue-700 border-blue-200',
   processing: 'bg-indigo-100 text-indigo-700 border-indigo-200',
   failed: 'bg-red-100 text-red-700 border-red-200'
@@ -40,8 +41,15 @@ export default function ScanDetail() {
   const [tech, setTech] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [imageBlob, setImageBlob] = useState<Blob | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editManufacturer, setEditManufacturer] = useState('');
+  const [savingProduct, setSavingProduct] = useState(false);
+
+  const [statusModalOpen, setStatusModalOpen] = useState(false);
+  const [savingStatus, setSavingStatus] = useState(false);
 
   const fmt = (date: string) => new Date(date).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
@@ -50,15 +58,16 @@ export default function ScanDetail() {
       getScanById(id).then(async (s) => {
         if (!s) return;
         setScan(s);
-        let f: Blob | null = s.__sourceFile || await getFile(s.id);
-        if (!f) {
+        const files = await getFiles(s.id);
+        if (files && files.length > 0) {
+            setImageUrls(files.map(f => URL.createObjectURL(f)));
+        } else {
            try {
-               f = await fetchScanImageBlob(s.id);
-           } catch(e) {}
-        }
-        if (f) {
-           setImageBlob(f);
-           setImageUrl(URL.createObjectURL(f));
+               const f = await fetchScanImageBlob(s.id);
+               if (f) setImageUrls([URL.createObjectURL(f)]);
+           } catch(e) {
+               console.error(e);
+           }
         }
       }).catch(console.error);
     }
@@ -66,7 +75,7 @@ export default function ScanDetail() {
 
   if (!scan) return (
     <div className="p-8 max-w-7xl mx-auto flex justify-center py-20">
-      <div className="animate-pulse bg-white p-8 rounded-2xl border border-slate-100 w-full max-w-4xl h-96"></div>
+      <div className="animate-pulse bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors p-8 rounded-2xl border border-slate-100 dark:border-slate-800 w-full max-w-4xl h-96"></div>
     </div>
   );
 
@@ -97,19 +106,70 @@ export default function ScanDetail() {
   const disableDownload = role === 'viewer' && isPendingReview;
   const scanName = `Scan-${String(scan.id || 'N/A').split('-')[0].toUpperCase()}`;
 
+  const handleEditClick = () => {
+    setEditName(scan.product_name !== 'Unknown Product' ? scan.product_name : '');
+    setEditManufacturer(scan.manufacturer !== 'Unknown Manufacturer' ? scan.manufacturer : '');
+    setEditModalOpen(true);
+  };
+
+  const saveProduct = async () => {
+    setSavingProduct(true);
+    try {
+      const updatedScan = await updateScanProduct(scan.id, editName || 'Unknown Product', editManufacturer || 'Unknown Manufacturer');
+      setScan(updatedScan);
+      setEditModalOpen(false);
+    } catch (e: unknown) {
+      alert((e as Error).message || "Failed to update product details");
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!window.confirm(`Are you sure you want to change the status to ${badgeLabels[newStatus as OverallStatus] || newStatus}?`)) return;
+    
+    setSavingStatus(true);
+    try {
+      const updatedScan = await resolveReview(scan.id, newStatus);
+      setScan(updatedScan);
+      setStatusModalOpen(false);
+    } catch (e: unknown) {
+      alert((e as Error).message || "Failed to change status");
+    } finally {
+      setSavingStatus(false);
+    }
+  };
+
   return (
     <div id="report-container" className="p-8 max-w-7xl mx-auto pb-20 font-sans">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8 bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold tracking-tight text-slate-900">{scanName}</h1>
-            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border ${badgeColors[scan.overall_status] || 'bg-slate-100 text-slate-700 border-slate-200'}`}>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 
+              onClick={handleEditClick}
+              className="text-3xl font-bold tracking-tight text-slate-900 dark:text-white cursor-pointer hover:text-blue-600 transition-colors"
+              title="Click to edit product name and manufacturer"
+            >
+              {scan.product_name || 'Unknown Product'}
+            </h1>
+            <button 
+              onClick={() => setStatusModalOpen(true)}
+              title="Click to override status"
+              className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border cursor-pointer hover:opacity-80 transition-opacity ${badgeColors[scan.overall_status] || 'bg-slate-100 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'}`}
+            >
               {badgeLabels[scan.overall_status] || scan.overall_status || 'UNKNOWN'}
-            </span>
+            </button>
           </div>
-          <div className="flex items-center gap-4 text-sm text-slate-500 font-medium">
+          
+          <div className="text-slate-600 dark:text-slate-400 font-medium mb-3 cursor-pointer hover:text-blue-500 transition-colors" onClick={handleEditClick}>
+            {scan.manufacturer || 'Unknown Manufacturer'}
+          </div>
+
+          <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 font-medium">
+            <span className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-slate-300">{scanName}</span>
+            <span className="text-slate-300">•</span>
             <span className="flex items-center gap-1.5"><Clock size={16}/> {fmt(scan.scan_date)}</span>
             <span className="text-slate-300">•</span>
             <span className="flex items-center gap-1.5"><Search size={16}/> ID: {scan.id}</span>
@@ -119,7 +179,7 @@ export default function ScanDetail() {
         <div className="flex items-center gap-3" data-html2canvas-ignore="true">
           <button 
             className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium shadow-sm transition-all ${
-              disableDownload ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/10 hover:-translate-y-0.5'
+              disableDownload ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 text-white shadow-slate-900/10 hover:-translate-y-0.5'
             }`}
             disabled={downloading || disableDownload} 
             onClick={download}
@@ -135,26 +195,30 @@ export default function ScanDetail() {
         {/* Left Col: Image & Violations */}
         <div className="lg:col-span-5 space-y-8">
           
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-5 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Product Image</h3>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Product Image</h3>
             </div>
-            <div className="bg-slate-50 p-6 flex justify-center items-center min-h-[300px]">
-              {imageUrl ? (
-                <img src={imageUrl} alt="Product preview" className="max-w-full max-h-[400px] object-contain rounded-xl shadow-sm border border-slate-200" />
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-6 flex flex-col justify-center items-center min-h-[300px]">
+              {imageUrls.length > 0 ? (
+                <div className={`grid gap-4 w-full ${imageUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {imageUrls.map((url, i) => (
+                    <img key={i} src={url} alt={`Product preview ${i+1}`} className="w-full max-h-[300px] object-contain bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors rounded-xl shadow-sm border border-slate-200 dark:border-slate-700" />
+                  ))}
+                </div>
               ) : (
                 <div className="text-center text-slate-400">
                   <FileText size={48} className="mx-auto mb-3 opacity-50" />
-                  <p className="text-sm font-medium">No image available</p>
+                  <p className="text-sm font-medium">No images available</p>
                 </div>
               )}
             </div>
           </motion.div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-5 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Violations Identified</h3>
-              <p className="text-xs text-slate-500 mt-1">{scan.violations?.length ? 'Detected issues requiring attention' : 'No violations identified'}</p>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">Violations Identified</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{scan.violations?.length ? 'Detected issues requiring attention' : 'No violations identified'}</p>
             </div>
             <div className="p-0">
               {scan.violations?.length > 0 ? (
@@ -165,8 +229,8 @@ export default function ScanDetail() {
                         {v.severity}
                       </span>
                       <div>
-                        <b className="block text-sm text-slate-900 mb-1">{v.rule_ref}</b>
-                        <p className="text-sm text-slate-600 leading-relaxed">{v.description}</p>
+                        <b className="block text-sm text-slate-900 dark:text-white mb-1">{v.rule_ref}</b>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{v.description}</p>
                       </div>
                     </div>
                   ))}
@@ -176,8 +240,8 @@ export default function ScanDetail() {
                   <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex justify-center items-center mb-3">
                     <CheckCircle2 size={24} />
                   </div>
-                  <p className="text-sm font-semibold text-slate-700">Perfectly compliant</p>
-                  <p className="text-xs text-slate-500 mt-1">No violations were found on this package.</p>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Perfectly compliant</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">No violations were found on this package.</p>
                 </div>
               )}
             </div>
@@ -193,7 +257,7 @@ export default function ScanDetail() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.1, type: "spring" }}
-            className="p-8 bg-slate-900 text-white rounded-3xl shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden"
+            className="p-8 bg-slate-900 dark:bg-slate-800 text-white rounded-3xl shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden"
           >
             <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12">
               <Scale size={160} />
@@ -212,10 +276,10 @@ export default function ScanDetail() {
 
           <div className="html2pdf__page-break"></div>
 
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-            <div className="p-6 border-b border-slate-100">
-              <h3 className="text-lg font-bold text-slate-900">Declaration Field Breakdown</h3>
-              <p className="text-sm text-slate-500 mt-1">Detailed analysis of mandatory declarations</p>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Declaration Field Breakdown</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Detailed analysis of mandatory declarations</p>
             </div>
             
             {downloadError && (
@@ -226,11 +290,11 @@ export default function ScanDetail() {
 
             {scan.overall_status === 'insufficient_image_quality' ? (
               <div className="p-12 text-center">
-                <div className="w-16 h-16 bg-slate-100 text-slate-500 rounded-2xl flex justify-center items-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-slate-100 text-slate-500 dark:text-slate-400 rounded-2xl flex justify-center items-center mx-auto mb-4">
                   <AlertTriangle size={32} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mb-2">Image quality insufficient</h3>
-                <p className="text-sm text-slate-600 max-w-md mx-auto mb-6">{scan.message}</p>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2">Image quality insufficient</h3>
+                <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto mb-6">{scan.message}</p>
                 <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-colors" onClick={() => navigate('/scans/new')}>
                   Recapture and Retry
                 </button>
@@ -242,11 +306,11 @@ export default function ScanDetail() {
                     initial={{ opacity: 0, x: -20 }} 
                     animate={{ opacity: 1, x: 0 }} 
                     transition={{ delay: index * 0.05 }}
-                    className={`p-6 flex flex-col sm:flex-row gap-4 sm:gap-6 ${f.status === 'not_detected' ? 'bg-slate-50' : ''}`} 
+                    className={`p-6 flex flex-col sm:flex-row gap-4 sm:gap-6 ${f.status === 'not_detected' ? 'bg-slate-50 dark:bg-slate-900/50' : ''}`} 
                     key={key}
                   >
                     <div className="sm:w-1/3 shrink-0">
-                      <b className="block text-sm font-semibold text-slate-900 mb-2">{FIELD_LABELS[key] || key}</b>
+                      <b className="block text-sm font-semibold text-slate-900 dark:text-white mb-2">{FIELD_LABELS[key] || key}</b>
                       <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider border ${
                         f.status === 'compliant' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 
                         f.status === 'non_compliant' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -263,7 +327,7 @@ export default function ScanDetail() {
                         </div>
                       ) : (
                         <div>
-                          <div className="text-sm text-slate-900 font-medium bg-slate-50 p-3 rounded-lg border border-slate-100 mb-3 break-words">
+                          <div className="text-sm text-slate-900 dark:text-white font-medium bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800 mb-3 break-words">
                             {typeof f.value === 'object' && f.value !== null
                               ? Array.isArray(f.value) 
                                 ? f.value.join(' • ') 
@@ -272,7 +336,7 @@ export default function ScanDetail() {
                                   : JSON.stringify(f.value)
                               : String(f.value || '')}
                           </div>
-                          <div className="flex items-center gap-4 text-[11px] font-medium text-slate-500">
+                          <div className="flex items-center gap-4 text-[11px] font-medium text-slate-500 dark:text-slate-400">
                             <span>Rule: <span className="text-blue-600 underline decoration-blue-200 underline-offset-2">{f.rule_ref || 'Unknown'}</span></span>
                           </div>
                         </div>
@@ -297,12 +361,12 @@ export default function ScanDetail() {
           </motion.div>
 
           {/* Technical Specs Toggle */}
-          <motion.div data-html2canvas-ignore="true" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+          <motion.div data-html2canvas-ignore="true" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
             <button 
               onClick={() => setTech(!tech)}
-              className="w-full p-5 flex items-center justify-between hover:bg-slate-50 transition-colors focus:outline-none"
+              className="w-full p-5 flex items-center justify-between hover:bg-slate-50 dark:bg-slate-900/50 transition-colors focus:outline-none"
             >
-              <div className="flex items-center gap-3 text-slate-700">
+              <div className="flex items-center gap-3 text-slate-700 dark:text-slate-300">
                 <SlidersHorizontal size={18} />
                 <b className="text-sm font-bold uppercase tracking-wider">Technical Calibration Details</b>
               </div>
@@ -316,11 +380,11 @@ export default function ScanDetail() {
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden"
                 >
-                  <div className="p-6 pt-0 grid grid-cols-2 sm:grid-cols-3 gap-6 border-t border-slate-100 mt-2 pt-6">
+                  <div className="p-6 pt-0 grid grid-cols-2 sm:grid-cols-3 gap-6 border-t border-slate-100 dark:border-slate-800 mt-2 pt-6">
                     {Object.entries(scan.preprocessing).map(([k, v]) => (
                       <div key={k}>
                         <small className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-1">{k.replace(/_/g, ' ')}</small>
-                        <b className="block text-sm text-slate-800 font-mono bg-slate-50 p-2 rounded border border-slate-100 truncate" title={String(v)}>{String(v)}</b>
+                        <b className="block text-sm text-slate-800 dark:text-slate-200 font-mono bg-slate-50 dark:bg-slate-900/50 p-2 rounded border border-slate-100 dark:border-slate-800 truncate" title={String(v)}>{String(v)}</b>
                       </div>
                     ))}
                   </div>
@@ -331,6 +395,124 @@ export default function ScanDetail() {
 
         </div>
       </div>
+      
+      {/* Edit Modal */}
+      <AnimatePresence>
+        {editModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" data-html2canvas-ignore="true">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden"
+            >
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Edit Product Details</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Update the product name and manufacturer for this scan.</p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Product Name</label>
+                  <input 
+                    type="text" 
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="e.g. Sample Imported Shampoo"
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors transition-all text-sm font-medium text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">Manufacturer <span className="text-slate-400 font-normal">(Optional)</span></label>
+                  <input 
+                    type="text" 
+                    value={editManufacturer}
+                    onChange={(e) => setEditManufacturer(e.target.value)}
+                    placeholder="e.g. ABC Corp Ltd."
+                    className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors transition-all text-sm font-medium text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+              <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-end gap-3">
+                <button 
+                  onClick={() => setEditModalOpen(false)}
+                  disabled={savingProduct}
+                  className="px-5 py-2.5 rounded-xl font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={saveProduct}
+                  disabled={savingProduct}
+                  className="px-5 py-2.5 rounded-xl font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition-all text-sm flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {savingProduct ? 'Saving...' : 'Save Details'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Status Override Modal */}
+      <AnimatePresence>
+        {statusModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" data-html2canvas-ignore="true">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white dark:bg-slate-900 dark:bg-slate-800 transition-colors rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800 w-full max-w-md overflow-hidden"
+            >
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white">Override Compliance Status</h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Select a new status for this product scan. This will override its current automated evaluation.</p>
+              </div>
+              <div className="p-6 space-y-3">
+                <button 
+                  onClick={() => handleStatusChange('compliant')}
+                  disabled={savingStatus}
+                  className="w-full text-left px-5 py-4 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-colors disabled:opacity-70"
+                >
+                  <span className="block font-bold mb-0.5">Compliant</span>
+                  <span className="block text-xs opacity-80">Mark as fully compliant.</span>
+                </button>
+                <button 
+                  onClick={() => handleStatusChange('non_compliant')}
+                  disabled={savingStatus}
+                  className="w-full text-left px-5 py-4 bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors disabled:opacity-70"
+                >
+                  <span className="block font-bold mb-0.5">Non-Compliant</span>
+                  <span className="block text-xs opacity-80">Mark as non-compliant due to violations.</span>
+                </button>
+                <button 
+                  onClick={() => handleStatusChange('review_required')}
+                  disabled={savingStatus}
+                  className="w-full text-left px-5 py-4 bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 rounded-xl transition-colors disabled:opacity-70"
+                >
+                  <span className="block font-bold mb-0.5">Review Required</span>
+                  <span className="block text-xs opacity-80">Send to the review queue for manual inspection.</span>
+                </button>
+                <button 
+                  onClick={() => handleStatusChange('quality_issue')}
+                  disabled={savingStatus}
+                  className="w-full text-left px-5 py-4 bg-slate-50 dark:bg-slate-900/50 text-slate-800 dark:text-slate-200 hover:bg-slate-100 border border-slate-200 dark:border-slate-700 rounded-xl transition-colors disabled:opacity-70"
+                >
+                  <span className="block font-bold mb-0.5">Quality Issue</span>
+                  <span className="block text-xs opacity-80">Mark image as insufficient or poor quality.</span>
+                </button>
+              </div>
+              <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 flex justify-end">
+                <button 
+                  onClick={() => setStatusModalOpen(false)}
+                  disabled={savingStatus}
+                  className="px-5 py-2.5 rounded-xl font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 transition-colors text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
